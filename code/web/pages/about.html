@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title data-i18n="page.about.title"></title>
+<meta name="description" data-i18n-content="page.about.lede">
+<link rel="stylesheet" href="app/site.css">
+<script src="app/i18n-bundle.js"></script>
+<script src="app/shell.js"></script>
+<script src="app/content.js"></script>
+<script src="app/figures/rng.js"></script>
+<script src="app/figures/astra-gl.js"></script>
+<script src="app/figures/astra.js"></script>
+</head>
+<body>
+<header id="ad-header"></header>
+
+<main class="wrap">
+  <section class="hero">
+    <div class="eyebrow" data-i18n="page.about.eyebrow"></div>
+    <h1 data-i18n="page.about.heading"></h1>
+    <p class="lede" data-i18n="page.about.lede"></p>
+    <div class="cta">
+      <a class="btn primary" id="openDemo" data-i18n="page.about.open_demo"></a>
+      <a class="btn" id="original" target="_blank" rel="noopener noreferrer" data-i18n="page.about.original"></a>
+    </div>
+  </section>
+
+  <a class="stage preview" id="preview">
+    <canvas id="loop"></canvas>
+    <div class="hint" data-i18n="page.about.preview_hint"></div>
+  </a>
+  <div class="caption">
+    <b id="who"></b>
+    <span class="muted" id="tagline"></span>
+  </div>
+  <p class="lede" id="summary"></p>
+
+  <div class="pane" style="margin-bottom:22px">
+    <h2 data-i18n="page.about.gpt6_title"></h2>
+    <p class="muted" data-i18n="page.about.gpt6_p1"></p>
+    <p class="muted" data-i18n="page.about.gpt6_p2"></p>
+    <p class="muted" data-i18n="page.about.gpt6_p3"></p>
+    <p><a class="btn" id="original2" target="_blank" rel="noopener noreferrer" data-i18n="page.about.original"></a></p>
+  </div>
+
+  <div class="pane" style="margin-bottom:60px">
+    <h2 data-i18n="page.about.source_title"></h2>
+    <ul class="claims" id="claims"></ul>
+    <p class="small muted" style="margin:16px 0 0" data-i18n="page.about.disclaimer"></p>
+  </div>
+
+  <p class="muted" id="error" hidden></p>
+</main>
+
+<footer class="site"><div class="wrap"><span data-i18n="site.footer"></span></div></footer>
+
+<script>
+let DATA = null;
+
+function render() {
+  const e = DATA.entries[0];
+  document.getElementById('who').textContent = t(e.titleToken);
+  document.getElementById('tagline').textContent = t(e.taglineToken);
+  document.getElementById('summary').textContent = t(e.summaryToken);
+  const row = (kind, tk) =>
+    `<li><span class="k ${kind}">${AD_esc(kind === 'v' ? t('origin.verified') : t('origin.reconstructed'))}</span><span>${AD_esc(t(tk))}</span></li>`;
+  document.getElementById('claims').innerHTML = e.origin.verifiedTokens.map(tk => row('v', tk))
+    .concat(e.origin.reconstructedTokens.map(tk => row('r', tk))).join('');
+}
+
+AD_onLangChange(render);
+
+AD_loadEntries().then(d => {
+  DATA = d;
+  const e = d.entries[0];
+  const demo = AD_href('demo', { id: e.id, lang: AD_LANG });
+  ['openDemo', 'preview'].forEach(id => { document.getElementById(id).href = demo; });
+  ['original', 'original2'].forEach(id => { document.getElementById(id).href = e.sourceUrl; });
+  // The preview is the real renderer, not a recording of one: same figure module,
+  // same parameters as the demo. Nothing here is pre-rendered, so nothing has to be
+  // committed as a binary and kept in step with the parameters by hand.
+  const fig = AD_figure(e);
+  if (fig) {
+    const ctrl = fig.create(document.getElementById('loop'), Object.assign({}, e.params), {});
+    ctrl.start();
+  }
+  render();
+}).catch(err => {
+  const p = document.getElementById('error');
+  p.hidden = false;
+  p.textContent = t('error.content_load_failed', { msg: err.message });
+});
+</script>
+</body>
+</html>

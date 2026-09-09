@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title data-i18n="page.demo.title"></title>
+<link rel="stylesheet" href="app/site.css">
+<script src="app/i18n-bundle.js"></script>
+<script src="app/shell.js"></script>
+<script src="app/content.js"></script>
+<script src="app/figures/rng.js"></script>
+<script src="app/figures/astra-gl.js"></script>
+<script src="app/figures/astra.js"></script>
+</head>
+<body class="demo">
+<div class="demowrap">
+  <div class="demostage" id="stage">
+    <canvas id="cv"></canvas>
+    <div class="stagetools">
+      <button class="btn" id="togglePanel" data-i18n="page.demo.panel"></button>
+      <span id="langHost"></span>
+    </div>
+    <aside class="demopanel" id="panel">
+      <div class="panelscroll">
+        <h2 class="small muted" data-i18n="page.demo.controls"></h2>
+        <div id="controls"></div>
+        <h2 class="small muted" data-i18n="page.demo.derived"></h2>
+        <div class="readout" id="readout"></div>
+      </div>
+      <div class="panelfoot">
+        <div class="panelactions">
+          <button class="btn" id="reset" data-i18n="common.reset"></button>
+        </div>
+      </div>
+    </aside>
+  </div>
+  <div class="demobar">
+    <a class="btn" id="about" data-i18n="page.demo.about"></a>
+    <span class="small muted" id="who"></span>
+    <span class="grow"></span>
+    <span class="small muted hint" id="hint"></span>
+  </div>
+</div>
+
+<script>
+let ENTRY = null, PARAMS = null, CTRL = null, FIG = null;
+let panelOn = true;
+
+function readout() {
+  if (!CTRL || !CTRL.derived) return;
+  const der = CTRL.derived();
+  const rows = [];
+  ENTRY.math.forEach(b => (b.show || []).forEach(s => {
+    if (!s.der) return;
+    const v = der[s.der];
+    const text = Array.isArray(v) ? v.map(x => AD_num(x, s.digits)).join('  ')
+      : (v === Infinity ? '∞' : AD_num(v, s.digits));
+    rows.push(`<span class="val"><b>${AD_symHtml(s.sym)}</b> = ${AD_esc(text)}` +
+      (s.unit ? ` <i>${AD_esc(s.unit)}</i>` : '') + '</span>');
+  }));
+  document.getElementById('readout').innerHTML = rows.join('');
+}
+
+// The panel starts out of the way on every screen: the first thing anyone sees is
+// the star field. Opening it is an explicit act, and it travels in the URL so a
+// shared link opens the same way.
+function syncPanel() {
+  const btn = document.getElementById('togglePanel');
+  document.getElementById('panel').hidden = !panelOn;
+  btn.setAttribute('aria-expanded', panelOn ? 'true' : 'false');
+  btn.classList.toggle('on', panelOn);
+  AD_setParam('panel', panelOn ? '1' : '');
+}
+
+function buildControls() {
+  AD_buildControls(document.getElementById('controls'), ENTRY, PARAMS, (p, key, phase) => {
+    AD_applyParams(CTRL, p, phase);
+    readout();
+  });
+}
+
+function bindReset() {
+  document.getElementById('reset').onclick = () => {
+    PARAMS = Object.assign({}, ENTRY.params);
+    buildControls();
+    AD_applyParams(CTRL, PARAMS, 'commit');
+    readout();
+  };
+}
+
+function mount() {
+  const canvas = document.getElementById('cv');
+  CTRL = FIG.create(canvas, PARAMS, {});
+  CTRL.start();
+  const at = parseFloat(AD_getParam('at'));
+  if (CTRL.seek && isFinite(at)) CTRL.seek(at);
+  AD_bindStage(canvas, CTRL);
+  buildControls();
+  readout();
+}
+
+AD_onLangChange(() => {
+  document.getElementById('who').textContent = t(ENTRY.titleToken);
+  document.getElementById('hint').textContent =
+    t('astra.hint');
+  readout();
+});
+
+AD_loadEntries().then(d => {
+  const id = AD_getParam('id') || d.entries[0].id;
+  ENTRY = d.entries.find(e => e.id === id) || d.entries[0];
+  PARAMS = Object.assign({}, ENTRY.params);
+  FIG = AD_figure(ENTRY);
+  panelOn = AD_getParam('panel') === '1';
+  document.title = t('page.demo.title_of', { name: t(ENTRY.titleToken) });
+  document.getElementById('about').href = AD_href('about', { lang: AD_LANG });
+  document.getElementById('who').textContent = t(ENTRY.titleToken);
+  document.getElementById('hint').textContent =
+    t('astra.hint');
+  AD_langPicker(document.getElementById('langHost'));
+  syncPanel();
+  mount();
+  bindReset();
+  document.getElementById('togglePanel').onclick = () => {
+    panelOn = !panelOn;
+    syncPanel();
+  };
+});
+</script>
+</body>
+</html>

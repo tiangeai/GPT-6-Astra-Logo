@@ -1,0 +1,9 @@
+# 本地运行数据（start.sh 的服务日志）
+.runtime/
+
+__pycache__/
+*.py[cod]
+.DS_Store
+node_modules/
+.env
+.env.local
